@@ -1,0 +1,54 @@
+buildscript {
+    repositories { google(); mavenCentral() }
+    dependencies { classpath 'com.android.tools.build:gradle:8.6.1' }
+}
+allprojects {
+    repositories { google(); mavenCentral() }
+}
+ext {
+    isAarRelease = false
+    isLite = true
+    sdkVersion = '5.1.0-local'
+}
+
+// Keep Core/JNI in AGP's native build model so Studio can use the sibling sources.
+def cipherLibraries = layout.buildDirectory.dir('cipher-libs').get().asFile
+def sdkModule = project(':hyphenatechatsdk')
+def checkSdkAndroidX = tasks.register('checkSdkAndroidX') {
+    group = 'verification'
+    description = 'Checks that the directly referenced SDK sources use AndroidX imports.'
+    doLast {
+        def supportSources = sdkModule.fileTree('src') { include '**/*.java' }.files.findAll {
+            it.getText('UTF-8') =~ /(?m)^\s*import\s+(?:static\s+)?android\.support\./
+        }
+        if (!supportSources.empty) {
+            throw new GradleException('The SDK checkout contains android.support imports, but this demo and '
+                    + 'the SDK Gradle dependencies use AndroidX. In emclient-android, run '
+                    + 'python3 scripts/replace_androidx.py -s "$PWD" -x, review the changes, then rebuild. '
+                    + 'The demo never changes SDK imports automatically. Affected files: '
+                    + supportSources.collect { sdkModule.relativePath(it) }.join(', '))
+        }
+    }
+}
+def runtimeLibraries = tasks.register('copyCipherLibraries', Sync) {
+    from sdkModule.file('libs')
+    include '**/libcipherdb.so'
+    into cipherLibraries
+}
+sdkModule.afterEvaluate {
+    sdkModule.android {
+        ndkVersion '27.2.12479018'
+        defaultConfig {
+            ndk { abiFilters.addAll((rootProject.findProperty('testAbis') ?: 'arm64-v8a x86_64').split(' ')) }
+            externalNativeBuild {
+                ndkBuild { arguments '-j4' }
+            }
+        }
+        externalNativeBuild {
+            ndkBuild { path sdkModule.file('ndk/jni/Android.mk') }
+        }
+        // libhyphenate.so comes only from externalNativeBuild, never from jniLibs.
+        sourceSets.main.jniLibs.srcDirs = [cipherLibraries]
+    }
+    sdkModule.tasks.named('preBuild').configure { dependsOn checkSdkAndroidX, runtimeLibraries }
+}

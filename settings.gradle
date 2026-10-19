@@ -1,0 +1,6 @@
+pluginManagement {
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
+}
+rootProject.name = 'EasemobSdkTestTools'
+include ':app', ':hyphenatechatsdk'
+project(':hyphenatechatsdk').projectDir = file('../emclient-android/hyphenatechatsdk')
