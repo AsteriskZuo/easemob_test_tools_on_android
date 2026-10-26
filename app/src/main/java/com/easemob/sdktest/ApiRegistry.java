@@ -114,13 +114,7 @@ final class ApiRegistry {
         JSONArray bodies = new JSONArray();
         List<EMMessageBody> list = message.getBodies();
         for (int index = 0; index < list.size(); index++) {
-            EMMessageBody body = list.get(index);
-            // 注意 Android 按 EMMessage.Type 从 0 开始（0 文本/1 图片/.../7 自定义），与 iOS body type 从 1 开始不同。
-            JSONObject item = new JSONObject();
-            item.put("index", index);
-            item.put("type", bodyType(body));
-            if (body instanceof EMTextMessageBody) item.put("text", ((EMTextMessageBody) body).getMessage());
-            bodies.put(item);
+            bodies.put(bodyToJson(index, list.get(index)));
         }
         JSONObject json = new JSONObject();
         json.put("messageId", message.getMsgId());
@@ -132,6 +126,72 @@ final class ApiRegistry {
         json.put("timestamp", message.getMsgTime());
         json.put("bodies", bodies);
         return json;
+    }
+
+    /** 注意 Android 按 EMMessage.Type 从 0 开始（0 文本/1 图片/.../7 自定义），与 iOS body type 从 1 开始不同。 */
+    static JSONObject bodyToJson(int index, EMMessageBody body) throws JSONException {
+        JSONObject item = new JSONObject();
+        item.put("index", index);
+        int type = bodyType(body);
+        item.put("type", type);
+        if (type >= 0) item.put("typeName", EMMessage.Type.values()[type].name());
+        if (body instanceof EMTextMessageBody) {
+            putNullable(item, "text", ((EMTextMessageBody) body).getMessage());
+        } else if (body instanceof EMLocationMessageBody) {
+            EMLocationMessageBody location = (EMLocationMessageBody) body;
+            item.put("latitude", location.getLatitude());
+            item.put("longitude", location.getLongitude());
+            putNullable(item, "address", location.getAddress());
+            putNullable(item, "buildingName", location.getBuildingName());
+        } else if (body instanceof EMCmdMessageBody) {
+            EMCmdMessageBody cmd = (EMCmdMessageBody) body;
+            putNullable(item, "action", cmd.action());
+            item.put("deliverOnlineOnly", cmd.isDeliverOnlineOnly());
+        } else if (body instanceof EMCustomMessageBody) {
+            EMCustomMessageBody custom = (EMCustomMessageBody) body;
+            putNullable(item, "event", custom.event());
+            item.put("params", toJsonSafe(custom.getParams()));
+        } else if (body instanceof EMFileMessageBody) {
+            EMFileMessageBody file = (EMFileMessageBody) body;
+            putNullable(item, "fileName", file.displayName());
+            putNullable(item, "localPath", file.getLocalUrl());
+            putNullable(item, "remotePath", file.getRemoteUrl());
+            item.put("downloadStatus", String.valueOf(file.downloadStatus()));
+            if (body instanceof EMImageMessageBody) {
+                EMImageMessageBody image = (EMImageMessageBody) body;
+                item.put("fileSize", image.getFileSize());
+                item.put("width", image.getWidth());
+                item.put("height", image.getHeight());
+                item.put("sendOriginalImage", image.isSendOriginalImage());
+                putNullable(item, "thumbnailLocalPath", image.thumbnailLocalPath());
+                putNullable(item, "thumbnailRemotePath", image.getThumbnailUrl());
+                item.put("thumbnailDownloadStatus", String.valueOf(image.thumbnailDownloadStatus()));
+                putNullable(item, "bigImageLocalPath", image.getBigImageLocalUrl());
+                putNullable(item, "bigImageRemotePath", image.getBigImageRemoteUrl());
+                item.put("bigImageDownloadStatus", String.valueOf(image.getBigImageDownloadStatus()));
+            } else if (body instanceof EMVideoMessageBody) {
+                EMVideoMessageBody video = (EMVideoMessageBody) body;
+                item.put("fileSize", video.getVideoFileLength());
+                item.put("duration", video.getDuration());
+                item.put("thumbnailWidth", video.getThumbnailWidth());
+                item.put("thumbnailHeight", video.getThumbnailHeight());
+                putNullable(item, "thumbnailLocalPath", video.getLocalThumb());
+                putNullable(item, "thumbnailRemotePath", video.getThumbnailUrl());
+                item.put("thumbnailDownloadStatus", String.valueOf(video.thumbnailDownloadStatus()));
+            } else if (body instanceof EMVoiceMessageBody) {
+                EMVoiceMessageBody voice = (EMVoiceMessageBody) body;
+                item.put("fileSize", voice.getFileSize());
+                item.put("duration", voice.getLength());
+            } else if (body instanceof EMNormalFileMessageBody) {
+                item.put("fileSize", ((EMNormalFileMessageBody) body).getFileSize());
+            }
+        }
+        return item;
+    }
+
+    /** org.json 的 put(key, null) 会删除该键；测试输出需要显式 null 占位。 */
+    private static void putNullable(JSONObject json, String key, Object value) throws JSONException {
+        json.put(key, value == null ? JSONObject.NULL : value);
     }
 
     private static int bodyType(EMMessageBody body) {
