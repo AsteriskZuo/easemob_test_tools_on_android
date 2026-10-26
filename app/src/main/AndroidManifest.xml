@@ -5,6 +5,8 @@
     <application android:name=".TestApplication" android:label="环信 SDK 测试"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:allowBackup="false" android:usesCleartextTraffic="true">
+        <activity android:name=".ApiCallActivity" android:exported="false" />
+        <activity android:name=".ApiTestActivity" android:exported="false" />
         <activity android:name=".MultiBodiesActivity" android:exported="false" />
         <activity android:name=".LoginActivity" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="true">

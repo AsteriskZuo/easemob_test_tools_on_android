@@ -37,7 +37,8 @@ final class SdkSession implements EMConnectionListener, EMMessageListener {
                 + "  连接：" + client.isConnected() + "\n账号：" + (client.isSdkInited() ? client.getCurrentUser() : "");
     }
 
-    void initialize(Boolean transfer, Boolean autoDownload, Boolean https, Boolean debug) {
+    void initialize(Boolean transfer, Boolean autoDownload, Boolean https, Boolean debug,
+                    Boolean syncConversations, Boolean syncGroups, Boolean syncContacts) {
         if (busy) return;
         EMClient client = EMClient.getInstance();
         if (client.isSdkInited()) { log("当前进程已初始化；修改初始化配置请重启 App"); return; }
@@ -48,6 +49,19 @@ final class SdkSession implements EMConnectionListener, EMMessageListener {
             if (transfer != null) options.setAutoTransferMessageAttachments(transfer);
             if (autoDownload != null) options.setAutoDownloadThumbnail(autoDownload);
             if (https != null) options.setUsingHttpsOnly(https);
+            if (syncConversations != null || syncGroups != null || syncContacts != null) {
+                // 任一项改动则整体覆盖；保持"默认"的项按 SDK 默认值取值（会话开，群组/联系人关）
+                EnumSet<EMOptions.EMDataSyncType> sync = EnumSet.noneOf(EMOptions.EMDataSyncType.class);
+                if (syncConversations == null || syncConversations) sync.add(EMOptions.EMDataSyncType.CONVERSATIONS);
+                if (syncGroups != null && syncGroups) sync.add(EMOptions.EMDataSyncType.JOINED_GROUPS);
+                if (syncContacts != null && syncContacts) sync.add(EMOptions.EMDataSyncType.CONTACTS);
+                options.setDataSyncType(sync);
+                List<String> names = new ArrayList<>();
+                if (sync.contains(EMOptions.EMDataSyncType.CONVERSATIONS)) names.add("会话");
+                if (sync.contains(EMOptions.EMDataSyncType.JOINED_GROUPS)) names.add("群组");
+                if (sync.contains(EMOptions.EMDataSyncType.CONTACTS)) names.add("联系人");
+                log("数据同步覆盖：" + (names.isEmpty() ? "无" : android.text.TextUtils.join("+", names)));
+            }
             client.init(context, options);
             if (debug != null) client.setDebugMode(debug);
             if (!listening) {

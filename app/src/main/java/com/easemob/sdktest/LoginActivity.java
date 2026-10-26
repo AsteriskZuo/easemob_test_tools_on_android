@@ -11,6 +11,7 @@ public final class LoginActivity extends TestActivity {
     private TextView status, logs;
     private EditText appKey, username, token;
     private Spinner transfer, autoDownload, https, debug;
+    private Spinner syncConversations, syncGroups, syncContacts;
     private final Runnable refresh = () -> {
         status.setText(session.stateText());
         logs.setText(session.logsText());
@@ -18,6 +19,7 @@ public final class LoginActivity extends TestActivity {
         appKey.setEnabled(editable);
         transfer.setEnabled(editable); autoDownload.setEnabled(editable);
         https.setEnabled(editable); debug.setEnabled(editable);
+        syncConversations.setEnabled(editable); syncGroups.setEnabled(editable); syncContacts.setEnabled(editable);
         if (EMClient.getInstance().isLoggedIn() && token.length() > 0) token.setText("");
     };
 
@@ -39,7 +41,11 @@ public final class LoginActivity extends TestActivity {
         autoDownload = choices("缩略图/语音自动下载：默认", "启用", "禁用");
         https = choices("仅 HTTPS：默认", "启用", "禁用");
         debug = choices("SDK 调试日志：默认", "启用", "禁用");
-        button("初始化", () -> session.initialize(value(transfer), value(autoDownload), value(https), value(debug)));
+        syncConversations = choices("同步会话：默认", "启用", "禁用");
+        syncGroups = choices("同步群组：默认", "启用", "禁用");
+        syncContacts = choices("同步联系人：默认", "启用", "禁用");
+        button("初始化", () -> session.initialize(value(transfer), value(autoDownload), value(https), value(debug),
+                value(syncConversations), value(syncGroups), value(syncContacts)));
         button("登录", () -> session.login());
         button("退出登录", () -> session.logout());
         text("登录与接收日志（切换页面继续接收）");
