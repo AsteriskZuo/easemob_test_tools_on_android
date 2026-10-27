@@ -2,7 +2,6 @@ package com.easemob.sdktest;
 
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -52,7 +51,7 @@ public final class ApiCallActivity extends TestActivity {
         running = true;
         invokeButton.setEnabled(false);
         resultView.setText("调用中…");
-        Log.i("APITester", "api." + entry.name + " params=" + params);
+        SdkSession.logChunked("APITester", "api." + entry.name + " params=" + params);
         JSONObject finalParams = params;
         AtomicBoolean delivered = new AtomicBoolean();
         ApiRegistry.Result once = result -> {
@@ -76,7 +75,7 @@ public final class ApiCallActivity extends TestActivity {
         } catch (JSONException error) {
             text = result.toString();
         }
-        Log.i("APITester", "api." + entry.name + " " + text);
+        SdkSession.logChunked("APITester", "api." + entry.name + " " + text);
         resultView.setText(text);
         copyButton.setEnabled(true);
     }

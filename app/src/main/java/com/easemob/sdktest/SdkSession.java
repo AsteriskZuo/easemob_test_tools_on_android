@@ -6,6 +6,7 @@ import android.os.Looper;
 import android.util.Log;
 import com.hyphenate.*;
 import com.hyphenate.chat.*;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -107,10 +108,27 @@ final class SdkSession implements EMConnectionListener, EMMessageListener {
 
     void log(String text) {
         if (Looper.myLooper() != Looper.getMainLooper()) { main.post(() -> log(text)); return; }
-        Log.i("SDKDemo", text);
+        logChunked("SDKDemo", text);
         logs.add(new SimpleDateFormat("HH:mm:ss", Locale.ROOT).format(new Date()) + " " + text);
         while (logs.size() > 200) logs.remove(0);
         changed();
+    }
+
+    /** Logcat 单条约 4KB 上限；超长文本按 UTF-8 字节安全分片（不截断多字节字符），分片带 [序号/总数] 前缀。 */
+    static void logChunked(String tag, String text) {
+        byte[] utf8 = text.getBytes(StandardCharsets.UTF_8);
+        if (utf8.length <= 3500) { Log.i(tag, text); return; }
+        List<String> parts = new ArrayList<>();
+        int offset = 0;
+        while (offset < utf8.length) {
+            int end = Math.min(offset + 3500, utf8.length);
+            while (end < utf8.length && (utf8[end] & 0xC0) == 0x80) end--; // 回退到 UTF-8 字符边界
+            parts.add(new String(utf8, offset, end - offset, StandardCharsets.UTF_8));
+            offset = end;
+        }
+        for (int i = 0; i < parts.size(); i++) {
+            Log.i(tag, "[" + (i + 1) + "/" + parts.size() + "] " + parts.get(i));
+        }
     }
 
     String logsText() { return android.text.TextUtils.join("\n", logs); }
