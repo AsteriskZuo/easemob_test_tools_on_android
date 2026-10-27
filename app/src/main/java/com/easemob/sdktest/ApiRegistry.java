@@ -213,7 +213,7 @@ final class ApiRegistry {
         json.put("unreadMessagesCount", conversation.getUnreadMsgCount());
         json.put("messagesCount", conversation.getAllMsgCount());
         EMMessage latest = conversation.getLastMessage();
-        if (latest != null) json.put("latestMessageId", latest.getMsgId());
+        if (latest != null) json.put("latestMessage", messageToJson(latest));
         return json;
     }
 
@@ -258,7 +258,7 @@ final class ApiRegistry {
             "ChatManager.getAllConversations",
             "ChatManager",
             "从本地数据库加载全部会话（同步方法，对应 getAllConversations，按 conversationId 排序输出）。\n"
-                    + "data 为会话数组，含 conversationId、type（0 单聊/1 群聊/2 聊天室）、unreadMessagesCount、messagesCount、latestMessageId。",
+                    + "data 为会话数组，含 conversationId、type（0 单聊/1 群聊/2 聊天室）、unreadMessagesCount、messagesCount、latestMessage（最后一条消息的完整 JSON）。",
             "{}",
             (params, deliver) -> {
                 requireInit();
