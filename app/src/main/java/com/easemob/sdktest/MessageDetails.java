@@ -26,6 +26,12 @@ final class MessageDetails {
                             .append(image.thumbnailLocalPath()).append(" status=").append(image.thumbnailDownloadStatus())
                             .append("\nbigImage=").append(image.getBigImageLocalUrl()).append(" status=").append(image.getBigImageDownloadStatus());
                 }
+                if (body instanceof EMVideoMessageBody) {
+                    EMVideoMessageBody video = (EMVideoMessageBody) body;
+                    text.append(" bytes=").append(video.getVideoFileLength())
+                            .append("\nthumbnail=").append(video.getLocalThumb())
+                            .append(" status=").append(video.thumbnailDownloadStatus());
+                }
             }
         }
         return text.toString();

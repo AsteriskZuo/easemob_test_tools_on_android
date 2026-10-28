@@ -4,14 +4,15 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.*;
-import com.hyphenate.EMMessageBodyCallBack;
+import com.hyphenate.EMCallBack;
 import com.hyphenate.chat.*;
 import java.io.File;
 import java.util.*;
 
 public final class MultiBodiesActivity extends TestActivity {
     private static final int PICK_FILES = 10, PICK_IMAGES = 11;
-    private EditText target, textInput, pathInput, messageId, bodyIndex;
+    private EditText target, textInput, pathInput, messageId;
+    private CheckBox sendOriginal;
     private Spinner chatType, resource;
     private LinearLayout drafts, received;
     private TextView state, details, logs;
@@ -46,6 +47,9 @@ public final class MultiBodiesActivity extends TestActivity {
             copy("路径", android.text.TextUtils.join("\n", paths));
         });
         button("清空草稿", () -> { session.drafts.clear(); session.changed(); });
+        sendOriginal = new CheckBox(this);
+        sendOriginal.setText("图片发送原图（关闭则压缩为大图发送）");
+        page.addView(sendOriginal);
         sendButton = button("发送这一条消息", this::send);
         text("最近发送 / 接收的消息（点击选择）");
         received = new LinearLayout(this); received.setOrientation(LinearLayout.VERTICAL); page.addView(received);
@@ -64,9 +68,8 @@ public final class MultiBodiesActivity extends TestActivity {
         button("复制所选消息文件路径", () -> {
             if (session.selected != null) copy("路径", MessageDetails.paths(session.selected));
         });
-        bodyIndex = input("bodyIndex 留空=整条；填写原始下标=指定 body", false);
-        bodyIndex.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
         resource = choices("原附件", "缩略图 / 语音", "图片大图");
+        text("下载按整条消息进行：复合消息内所有适用 body 按顺序处理，完成后逐 body 核对上方状态与路径。");
         button("下载 / 重试所选资源", this::download);
         text("操作和接收日志");
         button("复制日志", () -> copy("日志", session.logsText()));
@@ -156,14 +159,14 @@ public final class MultiBodiesActivity extends TestActivity {
                 if (draft.kind.equals("TEXT")) bodies.add(new EMTextMessageBody(draft.value));
                 else if (draft.kind.equals("IMAGE")) {
                     EMImageMessageBody image = new EMImageMessageBody(Uri.fromFile(new File(draft.value)));
-                    image.setSendOriginalImage(true); bodies.add(image);
+                    image.setSendOriginalImage(sendOriginal.isChecked()); bodies.add(image);
                 } else bodies.add(new EMNormalFileMessageBody(new File(draft.value)));
             }
-            EMMessage message = EMMessage.createSendMessage(to, bodies);
+            EMMessage message = EMMessage.createMultiBodySendMessage(to, bodies);
             message.setChatType(EMMessage.ChatType.values()[chatType.getSelectedItemPosition()]);
             session.busy = true;
             session.remember(message);
-            session.log("开始发送\n" + MessageDetails.describe(message));
+            session.log("开始发送 原图=" + sendOriginal.isChecked() + "\n" + MessageDetails.describe(message));
             message.setMessageStatusCallback(callback(session, message, "发送", true));
             EMClient.getInstance().chatManager().sendMessage(message);
         } catch (RuntimeException error) {
@@ -171,14 +174,11 @@ public final class MultiBodiesActivity extends TestActivity {
         }
     }
 
-    private static EMMessageBodyCallBack callback(SdkSession shared, EMMessage message, String operation, boolean sending) {
+    private static EMCallBack callback(SdkSession shared, EMMessage message, String operation, boolean sending) {
         // Capture application state, not the Activity: a request may finish after navigating away.
-        return new EMMessageBodyCallBack() {
-            @Override public void onBodyProgress(int progress, int index) {
-                shared.log(operation + " messageId=" + message.getMsgId() + " bodyIndex=" + index + " progress=" + progress);
-            }
-            @Override public void onBodyComplete(int index, int code, String error) {
-                shared.log(operation + " body终态 messageId=" + message.getMsgId() + " bodyIndex=" + index + " error=" + code);
+        return new EMCallBack() {
+            @Override public void onProgress(int progress, String status) {
+                shared.log(operation + " messageId=" + message.getMsgId() + " progress=" + progress);
             }
             @Override public void onSuccess() { finish(0); }
             @Override public void onError(int code, String error) { finish(code); }
@@ -209,29 +209,19 @@ public final class MultiBodiesActivity extends TestActivity {
     private void download() {
         if (!ready() || session.selected == null) return;
         EMMessage message = session.selected;
-        String input = bodyIndex.getText().toString().trim();
-        Integer index = null;
-        if (!input.isEmpty()) {
-            try { index = Integer.parseInt(input); }
-            catch (NumberFormatException error) { session.log("bodyIndex 必须是整数"); return; }
-            if (index < 0 || index >= message.getBodies().size()) { session.log("bodyIndex 超出列表范围"); return; }
-        }
         EMChatManager manager = EMClient.getInstance().chatManager();
         String operation = "下载#" + System.nanoTime() + " resource=" + resource.getSelectedItemPosition();
-        EMMessageBodyCallBack callback = callback(session, message, operation, false);
-        session.log(operation + " messageId=" + message.getMsgId() + " bodyIndex=" + (index == null ? "全部" : index));
+        EMCallBack callback = callback(session, message, operation, false);
+        session.log(operation + " messageId=" + message.getMsgId());
         switch (resource.getSelectedItemPosition()) {
             case 0:
-                if (index == null) manager.downloadAttachment(message, callback);
-                else manager.downloadAttachment(message, index, callback);
+                manager.downloadAttachment(message, callback);
                 break;
             case 1:
-                if (index == null) manager.downloadThumbnail(message, callback);
-                else manager.downloadThumbnail(message, index, callback);
+                manager.downloadThumbnail(message, callback);
                 break;
             default:
-                if (index == null) manager.downloadBigImage(message, callback);
-                else manager.downloadBigImage(message, index, callback);
+                manager.downloadBigImage(message, callback);
         }
     }
 }
