@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.InputType;
+import android.view.View;
 import android.widget.*;
 import com.hyphenate.chat.EMClient;
 
@@ -36,14 +37,28 @@ public final class LoginActivity extends TestActivity {
         bind(appKey, value -> session.appKey = value);
         bind(username, value -> session.username = value);
         bind(token, value -> session.token = value);
-        text("可选配置：默认不覆盖 SDK 值。初始化后修改需重启。");
-        transfer = choices("附件传输：默认", "启用", "禁用");
-        autoDownload = choices("缩略图/语音自动下载：默认", "启用", "禁用");
-        https = choices("仅 HTTPS：默认", "启用", "禁用");
-        debug = choices("SDK 调试日志：默认", "启用", "禁用");
-        syncConversations = choices("同步会话：默认", "启用", "禁用");
-        syncGroups = choices("同步群组：默认", "启用", "禁用");
-        syncContacts = choices("同步联系人：默认", "启用", "禁用");
+        TextView toggle = text("▶ 展开配置（未设置时使用 SDK 默认值）");
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setVisibility(View.GONE);
+        page.addView(panel);
+        toggle.setOnClickListener(v -> {
+            boolean show = panel.getVisibility() != View.VISIBLE;
+            panel.setVisibility(show ? View.VISIBLE : View.GONE);
+            toggle.setText(show ? "▼ 收起配置（未设置时使用 SDK 默认值）" : "▶ 展开配置（未设置时使用 SDK 默认值）");
+        });
+        text(panel, "默认不覆盖 SDK 值。初始化后修改需重启。");
+        transfer = choices(panel, "附件传输：默认", "启用", "禁用");
+        autoDownload = choices(panel, "缩略图/语音自动下载：默认", "启用", "禁用");
+        https = choices(panel, "仅 HTTPS：默认", "启用", "禁用");
+        debug = choices(panel, "SDK 调试日志：默认", "启用", "禁用");
+        syncConversations = choices(panel, "同步会话：默认", "启用", "禁用");
+        syncGroups = choices(panel, "同步群组：默认", "启用", "禁用");
+        syncContacts = choices(panel, "同步联系人：默认", "启用", "禁用");
+        debug.setSelection(1);
+        syncConversations.setSelection(1);
+        syncGroups.setSelection(1);
+        syncContacts.setSelection(1);
         button("初始化", () -> session.initialize(value(transfer), value(autoDownload), value(https), value(debug),
                 value(syncConversations), value(syncGroups), value(syncContacts)));
         button("登录", () -> session.login());

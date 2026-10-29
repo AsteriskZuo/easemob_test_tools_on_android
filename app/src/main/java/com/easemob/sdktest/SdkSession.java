@@ -21,7 +21,7 @@ final class SdkSession implements EMConnectionListener, EMMessageListener {
     final List<EMMessage> messages = new ArrayList<>();
     private final List<String> logs = new ArrayList<>();
     private final Set<Runnable> observers = new LinkedHashSet<>();
-    String appKey = "", username = "", token = "", target = "";
+    String appKey = "easemob-demo#zuoyu", username = "zuoyu01", token = "", target = "zuoyu02";
     boolean busy, importing;
     EMMessage selected;
     private boolean listening;

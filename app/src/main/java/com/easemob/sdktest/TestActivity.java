@@ -51,12 +51,14 @@ abstract class TestActivity extends Activity {
 
     int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 
-    TextView text(String value) {
+    TextView text(String value) { return text(page, value); }
+
+    TextView text(LinearLayout parent, String value) {
         TextView view = new TextView(this);
         view.setText(value);
         view.setTextIsSelectable(true);
         view.setPadding(0, dp(8), 0, dp(8));
-        page.addView(view);
+        parent.addView(view);
         return view;
     }
 
@@ -76,10 +78,12 @@ abstract class TestActivity extends Activity {
         return button;
     }
 
-    Spinner choices(String... options) {
+    Spinner choices(String... options) { return choices(page, options); }
+
+    Spinner choices(LinearLayout parent, String... options) {
         Spinner spinner = new Spinner(this);
         spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, options));
-        page.addView(spinner);
+        parent.addView(spinner);
         return spinner;
     }
 
