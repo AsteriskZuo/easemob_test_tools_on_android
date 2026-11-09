@@ -38,7 +38,16 @@ Android Studio 直接打开本项目并 Sync 即可加载 Java 和 C++ 源码构
 
 日志同步到界面和 Logcat 的 `SDKDemo` tag；固定高度区域内滚动。复制路径得到的是 Android 设备路径，不是 Mac 路径。子页面通过顶部导航栏返回上一页，不退出登录，也不注销应用级消息监听。
 
-「API 调用」页与上述流程独立：列表按关键字过滤已注册 API，进入调用页后按 JSON 模板编辑参数并调用；结果在页面展示、可复制，同时输出到 Logcat 的 `APITester` tag。已注册：发送文本消息、加载本地会话列表、获取本地联系人列表、获取本地已加入群组列表、拉取服务器历史消息。
+「API 调用」页与上述流程独立：列表按关键字过滤已注册 API，进入调用页后按 JSON 模板编辑参数并调用；结果在页面展示、可复制，同时输出到 Logcat 的 `APITester` tag。已注册：发送文本消息、加载本地会话列表、获取本地联系人列表、添加联系人、删除联系人、获取本地已加入群组列表、拉取服务器历史消息。
+
+手动验证删除联系人：登录后搜索 `deleteContact`，进入 `ContactManager.deleteContact`，将 `username` 改为目标联系人用户 ID。`keepConversation` 为 `false`（默认）时删除相关会话和消息，为 `true` 时保留。调用成功显示 `{"success": true}`，失败显示 SDK 错误码及错误信息；调用前后可通过 `ContactManager.getContactsFromLocal` 和 `ChatManager.getAllConversations` 对比联系人及本地会话状态。分别测试两种参数时，需先恢复好友关系并准备会话消息。
+
+手动复验联系人列表：
+
+1. 调用 `ContactManager.addContact`，参数 `{"username":"zuoyu02","reason":""}`。`reason` 可省略、传 `null` 或空字符串；成功表示邀请请求成功，需要对方同意或自动接受。
+2. 调用 `ContactManager.getContactsFromLocal`（`{}`），先确认 `data` 中存在 `zuoyu02`，再调用 `deleteContact`。
+3. 删除成功后立即查询一次本地联系人列表并保留结果；收到 `onContactDeleted` 后再次查询，预期不再包含 `zuoyu02`。本地联系人删除依赖服务端 `ROSTER REMOVE` 通知，可能晚于删除 API 成功返回；若暂未收到通知，稍后重查并保留完整 SDK 日志。
+4. `keepConversation` 只控制会话和消息是否保留，不影响联系人应被删除的预期。
 
 ## AndroidX / support 切换的影响
 

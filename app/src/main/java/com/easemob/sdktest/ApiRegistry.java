@@ -264,7 +264,7 @@ final class ApiRegistry {
                 requireInit();
                 List<EMConversation> conversations = new ArrayList<>(
                         EMClient.getInstance().chatManager().getAllConversations().values());
-                conversations.sort(Comparator.comparing(EMConversation::conversationId));
+                Collections.sort(conversations, (left, right) -> left.conversationId().compareTo(right.conversationId()));
                 deliver.accept(success(conversations));
             }
         ),
@@ -277,6 +277,42 @@ final class ApiRegistry {
             (params, deliver) -> {
                 requireInit();
                 deliver.accept(success(EMClient.getInstance().contactManager().getContactsFromLocal()));
+            }
+        ),
+        new ApiEntry(
+            "ContactManager.addContact",
+            "ContactManager",
+            "发送添加联系人请求（对应 addContact，同步方法在后台线程执行；请先登录）。\n"
+                    + "username 为目标用户 ID；reason 为邀请信息，可省略、传 null 或空字符串。\n"
+                    + "成功表示请求发送成功；需对方同意或自动接受，并通过 getContactsFromLocal 确认好友关系已建立后，再测试删除。",
+            "{\n  \"username\": \"targetId\",\n  \"reason\": \"\"\n}",
+            (params, deliver) -> {
+                requireInit();
+                String username = requiredString(params, "username");
+                if (!params.isNull("reason") && !(params.opt("reason") instanceof String)) {
+                    throw new ParamException("reason 必须是字符串或 null");
+                }
+                String reason = params.isNull("reason") ? "" : params.getString("reason");
+                EMClient.getInstance().contactManager().addContact(username, reason);
+                deliver.accept(success(null));
+            }
+        ),
+        new ApiEntry(
+            "ContactManager.deleteContact",
+            "ContactManager",
+            "删除联系人（对应 deleteContact，同步方法在后台线程执行；请先登录）。\n"
+                    + "username 为要删除的联系人用户 ID。keepConversation：true 保留相关会话和消息，false 删除；省略时默认 false，与 SDK 一致。\n"
+                    + "成功返回 {\"success\": true}；失败返回 SDK 错误码及错误信息。可结合 getContactsFromLocal 和 getAllConversations 检查删除结果。",
+            "{\n  \"username\": \"targetId\",\n  \"keepConversation\": false\n}",
+            (params, deliver) -> {
+                requireInit();
+                String username = requiredString(params, "username");
+                if (params.has("keepConversation") && !(params.opt("keepConversation") instanceof Boolean)) {
+                    throw new ParamException("keepConversation 必须是布尔值 true/false");
+                }
+                boolean keepConversation = params.optBoolean("keepConversation", false);
+                EMClient.getInstance().contactManager().deleteContact(username, keepConversation);
+                deliver.accept(success(null));
             }
         ),
         new ApiEntry(
